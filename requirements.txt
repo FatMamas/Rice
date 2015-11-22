@@ -1,0 +1,5 @@
+numpy >= 1.10.1
+scipy >= 0.16.1
+six >= 1.10.0
+Theano >= 0.7.0
+Lasagne >= 0.1
