@@ -12,7 +12,7 @@ Prerequisites
 
 Usage
 -----
-It actually doesn't work yet, so don't use it.
+`$ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python3 main.py`
 
 Data
 ----

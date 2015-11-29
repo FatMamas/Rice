@@ -10,7 +10,7 @@ import theano.tensor as T
 IMG_COLORS = 3
 IMG_SIZE = 32
 TRAIN_EPOCHS = 500
-MINIBATCH_SIZE = 500
+MINIBATCH_SIZE = 110    # this fits into my 1GB GeForce GTS 450
 
 
 def load_single_dataset(filename):
