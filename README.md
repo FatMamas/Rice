@@ -12,7 +12,23 @@ Prerequisites
 
 Usage
 -----
-`$ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python3 main.py`
+
+```
+usage: main.py [-h] [-d DEVICE] [-t TRAINEPOCHS] [-b MINIBATCH] [-m MODE]
+               [-f FLOATX]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -d DEVICE, --device DEVICE
+                        Train on this device
+  -t TRAINEPOCHS, --trainepochs TRAINEPOCHS
+                        Number of train epochs
+  -b MINIBATCH, --minibatch MINIBATCH
+                        Size of the minibatch
+  -m MODE, --mode MODE  Theano run mode
+  -f FLOATX, --floatX FLOATX
+                        Theano floatX mode
+```
 
 Data
 ----
