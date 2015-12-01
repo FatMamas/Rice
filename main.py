@@ -6,8 +6,80 @@ import os
 import pickle
 import numpy as np
 
+DATA_DIR = "data"
+DATA_FILENAME = "cifar-10-python.tar.gz"
+DATA_PATH = DATA_DIR + "/" + DATA_FILENAME
+
+BATCH_NUMBER = 6
+BATCH_FILENAME = "data_batch_{}"
+BATCH_PATH = DATA_DIR + "/" + BATCH_FILENAME
+BATCH_URL = "http://www.cs.toronto.edu/~kriz/" + DATA_FILENAME
+
+
+def check_or_download_dataset():
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+    batch_exists = True
+    for i in range(1, BATCH_NUMBER):
+        if not os.path.exists(BATCH_PATH.format(i)):
+            batch_exists = False
+            break
+
+    if not batch_exists:
+        import urllib.request
+        import tarfile
+
+        logging.info("Downloading the requested dataset: " + BATCH_URL)
+
+        requested_files = [BATCH_FILENAME.format(i) for i in range(1, BATCH_NUMBER)]
+
+        # copypasta from stackoverflow
+        def reporthook(blocknum, blocksize, totalsize):
+            readsofar = blocknum * blocksize
+            if totalsize > 0:
+                import math
+
+                ts_l = math.floor(math.log(totalsize, 2) / 10.0)
+                sf_l = math.floor(math.log(readsofar + 1, 2) / 10.0)
+
+                def get_s_from_l(l):
+                    if l == 0:
+                        return 'B'
+                    elif l == 1:
+                        return 'kB'
+                    elif l == 2:
+                        return 'MB'
+                    elif l == 3:
+                        return 'GB'
+
+                ts_s = get_s_from_l(ts_l)
+                sf_s = get_s_from_l(sf_l)
+
+                ts_l *= 10
+                sf_l *= 10
+
+                percent = readsofar * 1e2 / totalsize
+
+                s = "\r%5.1f%% %*d %s / %d %s" % (percent, len(str(totalsize)), readsofar / (2 ** sf_l), sf_s, totalsize / (2 ** ts_l), ts_s)
+                sys.stderr.write(s)
+                if readsofar >= totalsize:  # near the end
+                    sys.stderr.write("\n")
+            else:  # total size is unknown
+                sys.stderr.write("read %d\n" % (readsofar,))
+
+        urllib.request.urlretrieve(BATCH_URL, DATA_PATH, reporthook)
+        with tarfile.open(DATA_PATH) as tf:
+            for member in tf.getmembers():
+                if member.name.split("/")[-1] in requested_files:
+                    tf.extract(member, DATA_DIR)
+
+                    # rename the fucker
+                    os.rename(DATA_DIR + "/" + member.name, DATA_DIR + "/" + member.name.split("/")[-1])
+
 
 def load_single_dataset(filename):
+    check_or_download_dataset()
+
     with open(filename, "rb") as f:
         file_data = pickle.load(f, encoding='bytes')
 
@@ -20,8 +92,8 @@ def load_dataset():
     all_data = np.empty(shape=(0, config.img_colors, config.img_size, config.img_size), dtype=np.uint8)
     all_labels = np.empty(shape=0, dtype=np.uint8)
 
-    for i in range(1, 6):
-        chunk_data, chunk_labels = load_single_dataset("data/data_batch_{}".format(i))
+    for i in range(1, BATCH_NUMBER):
+        chunk_data, chunk_labels = load_single_dataset(BATCH_PATH.format(i))
         all_data = np.append(all_data, chunk_data)
         all_labels = np.append(all_labels, chunk_labels)
 
@@ -87,7 +159,7 @@ def iterate_minibatches(inputs, targets, batch_size, shuffle=False):
         else:
             excerpt = slice(start_idx, start_idx + batch_size)
         yield inputs[excerpt], targets[excerpt]
-        # yield inputs[1:5], targets[1:5] # TODO: do not use this! never!
+        # yield inputs[1:5], targets[1:5] # TODO: do not use this! ever!
 
 
 if __name__ == "__main__":
