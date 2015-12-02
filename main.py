@@ -1,17 +1,10 @@
 import logging
 import sys
+import argparse
 import os
 
 import pickle
 import numpy as np
-import lasagne
-import theano
-import theano.tensor as T
-
-IMG_COLORS = 3
-IMG_SIZE = 32
-TRAIN_EPOCHS = 500
-MINIBATCH_SIZE = 110    # this fits into my 1GB GeForce GTS 450
 
 DATA_DIR = "data"
 DATA_FILENAME = "cifar-10-python.tar.gz"
@@ -92,11 +85,11 @@ def load_single_dataset(filename):
 
     part_data = np.append(np.empty(shape=0, dtype=np.uint8), file_data[b'data'])
     part_labels = np.append(np.empty(shape=0, dtype=np.uint8), file_data[b'labels'])
-    return part_data.reshape((-1, IMG_COLORS, IMG_SIZE, IMG_SIZE)).astype(np.int8), part_labels.astype(np.int8)
+    return part_data.reshape((-1, config.img_colors, config.img_size, config.img_size)).astype(np.int8), part_labels.astype(np.int8)
 
 
 def load_dataset():
-    all_data = np.empty(shape=(0, IMG_COLORS, IMG_SIZE, IMG_SIZE), dtype=np.uint8)
+    all_data = np.empty(shape=(0, config.img_colors, config.img_size, config.img_size), dtype=np.uint8)
     all_labels = np.empty(shape=0, dtype=np.uint8)
 
     for i in range(1, BATCH_NUMBER):
@@ -104,15 +97,15 @@ def load_dataset():
         all_data = np.append(all_data, chunk_data)
         all_labels = np.append(all_labels, chunk_labels)
 
-    return all_data.reshape((-1, IMG_COLORS, IMG_SIZE, IMG_SIZE)), all_labels.astype(np.int8)
+    return all_data.reshape((-1, config.img_colors, config.img_size, config.img_size)), all_labels.astype(np.int8)
 
 
 def build_network(input_var=None):
-    network = lasagne.layers.InputLayer(shape=(None, IMG_COLORS, IMG_SIZE, IMG_SIZE), input_var=input_var)
+    network = lasagne.layers.InputLayer(shape=(None, config.img_colors, config.img_size, config.img_size), input_var=input_var)
 
     # Convolutional layer with IMG_SIZE kernels of size 5x5.
     network = lasagne.layers.Conv2DLayer(
-            network, num_filters=IMG_SIZE, filter_size=(5, 5),
+            network, num_filters=config.img_size, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify,
             W=lasagne.init.GlorotUniform())
 
@@ -121,7 +114,7 @@ def build_network(input_var=None):
 
     # Another convolution with IMG_SIZE 5x5 kernels
     network = lasagne.layers.Conv2DLayer(
-            network, num_filters=IMG_SIZE, filter_size=(5, 5),
+            network, num_filters=config.img_size, filter_size=(5, 5),
             nonlinearity=lasagne.nonlinearities.rectify)
 
     # And another 2x2 pooling:
@@ -172,6 +165,28 @@ def iterate_minibatches(inputs, targets, batch_size, shuffle=False):
 if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)s @%(asctime)s: %(message)s', level=logging.DEBUG)
 
+    logging.info("Parsing arguments")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--device", nargs=1, default=["cpu"], help="Train on this device")
+    parser.add_argument("-t", "--trainepochs", default=500, type=int, help="Number of train epochs")
+    parser.add_argument("-b", "--minibatch", default=100, type=int, help="Size of the minibatch")
+    parser.add_argument("-m", "--mode", default="FAST_RUN", help="Theano run mode")
+    parser.add_argument("-f", "--floatX", default="float32", help="Theano floatX mode")
+
+    global config
+    config = parser.parse_args()
+    config.device = config.device[0]
+    config.img_colors = 3
+    config.img_size = 32
+
+    logging.info("Setting environmental variables for Theano")
+    os.environ["THEANO_FLAGS"] = "mode={},device={},floatX={}".format(config.mode, config.device, config.floatX)
+
+    logging.info("Importing Theano and Lasagne")
+    import theano
+    import theano.tensor as T
+    import lasagne
+
     logging.info("Loading the training patterns")
     train_data, train_labels = load_dataset()
     if len(train_data) != len(train_labels):
@@ -217,13 +232,13 @@ if __name__ == "__main__":
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
 
     logging.info("Starting the training loop")
-    for epoch in range(TRAIN_EPOCHS):
+    for epoch in range(config.trainepochs):
         logging.info("Epoch #%d", epoch)
 
         logging.info("Passing over the training data")
         train_err = 0
         train_batches = 0
-        for batch_id, (inputs, targets) in enumerate(iterate_minibatches(train_data, train_labels, MINIBATCH_SIZE, shuffle=True)):
+        for batch_id, (inputs, targets) in enumerate(iterate_minibatches(train_data, train_labels, config.minibatch, shuffle=True)):
             logging.info("Batch %d in epoch #%d", batch_id, epoch)
             train_err += train_fn(inputs, targets)
             train_batches += 1
@@ -232,7 +247,7 @@ if __name__ == "__main__":
         val_err = 0
         val_acc = 0
         val_batches = 0
-        for inputs, targets in iterate_minibatches(test_data, test_labels, MINIBATCH_SIZE, shuffle=False):
+        for inputs, targets in iterate_minibatches(test_data, test_labels, config.minibatch, shuffle=False):
             err, acc = val_fn(inputs, targets)
             val_err += err
             val_acc += acc
