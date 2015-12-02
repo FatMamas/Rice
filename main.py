@@ -31,7 +31,7 @@ def check_or_download_dataset():
 
         logging.info("Downloading the requested dataset: " + BATCH_URL)
 
-        requested_files = [BATCH_FILENAME.format(i) for i in range(1, BATCH_NUMBER)]
+        requested_files = [BATCH_FILENAME.format(i) for i in range(1, BATCH_NUMBER)] + ['test_batch']
 
         # copypasta from stackoverflow
         def reporthook(blocknum, blocksize, totalsize):
