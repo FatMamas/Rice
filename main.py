@@ -85,12 +85,12 @@ def load_single_dataset(filename):
 
     part_data = np.append(np.empty(shape=0, dtype=np.uint8), file_data[b'data'])
     part_labels = np.append(np.empty(shape=0, dtype=np.uint8), file_data[b'labels'])
-    return part_data.reshape((-1, config.img_colors, config.img_size, config.img_size)).astype(np.int8), part_labels.astype(np.int8)
+    return part_data.reshape((-1, config.img_colors, config.img_size, config.img_size)).astype(np.float32)/255.0, part_labels.astype(np.int8)
 
 
 def load_dataset():
-    all_data = np.empty(shape=(0, config.img_colors, config.img_size, config.img_size), dtype=np.uint8)
-    all_labels = np.empty(shape=0, dtype=np.uint8)
+    all_data = np.empty(shape=(0, config.img_colors, config.img_size, config.img_size), dtype=np.float32)
+    all_labels = np.empty(shape=0, dtype=np.float32)
 
     for i in range(1, BATCH_NUMBER):
         chunk_data, chunk_labels = load_single_dataset(BATCH_PATH.format(i))
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     logging.info("Loaded %d testing patterns", len(test_labels))
 
     logging.info("Creating Theano input and target variables")
-    input_var = T.tensor4('inputs')
+    input_var = T.tensor4('inputs', dtype='float32')
     target_var = T.ivector('targets')
 
     logging.info("Building the network")
@@ -215,7 +215,9 @@ if __name__ == "__main__":
 
     logging.info("Creating the update expression")
     params = lasagne.layers.get_all_params(network, trainable=True)
-    updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum=0.9)
+    # updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum=0.9)
+    updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.5, momentum=0.3)
+    #updates = lasagne.updates.adagrad(loss, params) # this kinda works
 
     logging.info("Creating the test-loss expression")
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
@@ -253,9 +255,9 @@ if __name__ == "__main__":
             val_acc += acc
             val_batches += 1
 
-        logging.info("Training loss:\t%f", train_err / train_batches)
-        logging.info("Validation loss:\t%f", val_err / val_batches)
-        logging.info("Validation accuracy:\t%f%%", val_acc / val_batches * 100)
+        logging.info("Training loss:\t%.10f", train_err / train_batches)
+        logging.info("Validation loss:\t%.10f", val_err / val_batches)
+        logging.info("Validation accuracy:\t%.10f%%", val_acc / val_batches * 100)
 
     logging.info("Training finished")
 
