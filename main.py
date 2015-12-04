@@ -126,6 +126,12 @@ def iterate_minibatches(inputs, targets, batch_size, shuffle=False):
         # yield inputs[1:5], targets[1:5] # TODO: do not use this! never!
 
 
+def save_img(img, f_name):
+    from PIL import Image
+    swapped_img = np.swapaxes(np.swapaxes(img, 0, 2), 1, 0)
+    Image.fromarray(swapped_img, 'RGB').save(f_name)
+
+
 if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)s @%(asctime)s: %(message)s', level=logging.DEBUG)
 
