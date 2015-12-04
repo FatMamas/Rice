@@ -100,50 +100,14 @@ def load_dataset():
     return all_data.reshape((-1, config.img_colors, config.img_size, config.img_size)), all_labels.astype(np.int8)
 
 
-def build_network(input_var=None):
-    network = lasagne.layers.InputLayer(shape=(None, config.img_colors, config.img_size, config.img_size), input_var=input_var)
-
-    # Convolutional layer with IMG_SIZE kernels of size 5x5.
-    network = lasagne.layers.Conv2DLayer(
-            network, num_filters=config.img_size, filter_size=(5, 5),
-            nonlinearity=lasagne.nonlinearities.rectify,
-            W=lasagne.init.GlorotUniform())
-
-    # Max-pooling layer of factor 2 in both dimensions:
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
-
-    # Another convolution with IMG_SIZE 5x5 kernels
-    network = lasagne.layers.Conv2DLayer(
-            network, num_filters=config.img_size, filter_size=(5, 5),
-            nonlinearity=lasagne.nonlinearities.rectify)
-
-    # And another 2x2 pooling:
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
-
-    # A fully-connected layer of 256 units with 50% dropout on its inputs:
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
-            num_units=256,
-            nonlinearity=lasagne.nonlinearities.rectify)
-
-    # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-    network = lasagne.layers.DenseLayer(
-            lasagne.layers.dropout(network, p=.5),
-            num_units=10,
-            nonlinearity=lasagne.nonlinearities.softmax)
-
-    return network
-
-
 def save_network(net, filename):
     with open(filename, 'wb') as f:
         pickle.dump(lasagne.layers.get_all_param_values(net), f)
 
 
-def load_network(filename, input_v=None):
+def load_network(filename, net):
     with open(filename, 'rb') as f:
         data = pickle.load(f)
-    net = build_network(input_v)
     lasagne.layers.set_all_param_values(net, data)
     return net
 
@@ -159,7 +123,7 @@ def iterate_minibatches(inputs, targets, batch_size, shuffle=False):
         else:
             excerpt = slice(start_idx, start_idx + batch_size)
         yield inputs[excerpt], targets[excerpt]
-        # yield inputs[1:5], targets[1:5] # TODO: do not use this! ever!
+        # yield inputs[1:5], targets[1:5] # TODO: do not use this! never!
 
 
 if __name__ == "__main__":
@@ -172,6 +136,8 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--minibatch", default=100, type=int, help="Size of the minibatch")
     parser.add_argument("-m", "--mode", default="FAST_RUN", help="Theano run mode")
     parser.add_argument("-f", "--floatX", default="float32", help="Theano floatX mode")
+    parser.add_argument("-l", "--log", default="log", help="Log directory")
+    parser.add_argument("-o", "--output", default="trained", help="Trained model output directory")
 
     global config
     config = parser.parse_args()
@@ -180,7 +146,7 @@ if __name__ == "__main__":
     config.img_size = 32
 
     logging.info("Setting environmental variables for Theano")
-    os.environ["THEANO_FLAGS"] = "mode={},device={},floatX={}".format(config.mode, config.device, config.floatX)
+    os.environ["THEANO_FLAGS"] = "mode={},device={},floatX={},nvcc.fastmath=True".format(config.mode, config.device, config.floatX)
 
     logging.info("Importing Theano and Lasagne")
     import theano
@@ -205,8 +171,14 @@ if __name__ == "__main__":
     input_var = T.tensor4('inputs', dtype='float32')
     target_var = T.ivector('targets')
 
+    logging.info("Importing the network module")    # we need to import this AFTER Theano and Lasagne
+    from model.mnist import build_network as build_network
+    # from model.official import build_cifar_network as build_network
+    # from model.conv3 import build_network_3cc as build_network
+
     logging.info("Building the network")
-    network = build_network(input_var)
+    network, net_name = build_network(config, input_var)
+    logging.info("Network '%s' successfully built", net_name)
 
     logging.info("Creating the loss expression")
     prediction = lasagne.layers.get_output(network)
@@ -233,39 +205,47 @@ if __name__ == "__main__":
     logging.info("Compiling the validation function (Theano)")
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
 
-    logging.info("Starting the training loop")
-    for epoch in range(config.trainepochs):
-        logging.info("Epoch #%d", epoch)
+    logging.info("Creating log file")
+    os.makedirs(config.log, exist_ok=True)
+    with open('{}/{}.csv'.format(config.log, net_name), 'w') as log_f:
+        log_f.write("epoch;trainloss;valloss;valacc\n")
 
-        logging.info("Passing over the training data")
-        train_err = 0
-        train_batches = 0
-        for batch_id, (inputs, targets) in enumerate(iterate_minibatches(train_data, train_labels, config.minibatch, shuffle=True)):
-            logging.info("Batch %d in epoch #%d", batch_id, epoch)
-            train_err += train_fn(inputs, targets)
-            train_batches += 1
+        logging.info("Starting the training loop")
+        for epoch in range(config.trainepochs):
+            logging.info("Epoch #%d", epoch)
 
-        logging.info("Passing over the validation data")
-        val_err = 0
-        val_acc = 0
-        val_batches = 0
-        for inputs, targets in iterate_minibatches(test_data, test_labels, config.minibatch, shuffle=False):
-            err, acc = val_fn(inputs, targets)
-            val_err += err
-            val_acc += acc
-            val_batches += 1
+            logging.info("Passing over the training data")
+            train_err = 0
+            train_batches = 0
+            for batch_id, (inputs, targets) in enumerate(iterate_minibatches(train_data, train_labels, config.minibatch, shuffle=True)):
+                logging.info("Batch %d in epoch #%d", batch_id, epoch)
+                train_err += train_fn(inputs, targets)
+                train_batches += 1
 
-        logging.info("Training loss:\t%.10f", train_err / train_batches)
-        logging.info("Validation loss:\t%.10f", val_err / val_batches)
-        logging.info("Validation accuracy:\t%.10f%%", val_acc / val_batches * 100)
+            logging.info("Passing over the validation data")
+            val_err = 0
+            val_acc = 0
+            val_batches = 0
+            for inputs, targets in iterate_minibatches(test_data, test_labels, config.minibatch, shuffle=False):
+                err, acc = val_fn(inputs, targets)
+                val_err += err
+                val_acc += acc
+                val_batches += 1
+
+            logging.info("Training loss:\t%.10f", train_err / train_batches)
+            logging.info("Validation loss:\t%.10f", val_err / val_batches)
+            logging.info("Validation accuracy:\t%.10f%%", val_acc / val_batches * 100)
+
+            log_f.write("{};{};{};{}\n".format(epoch, train_err / train_batches, val_err / val_batches, val_acc / val_batches * 100))
 
     logging.info("Training finished")
 
-    network_filename = "network.dat"
+    os.makedirs(config.output, exist_ok=True)
+    network_filename = "{}/network_{}.dat".format(config.output, net_name)
     logging.info("Saving the model into '%s'", network_filename)
     save_network(network, network_filename)
 
-    logging.info("Reading it just to be sure")
-    input_var2 = T.tensor4('inputs2')
-    network2 = load_network(network_filename, input_var2)
-    logging.info("Finished! :)")
+    # logging.info("Reading it just to be sure")
+    # input_var2 = T.tensor4('inputs2')
+    # network2 = load_network(network_filename, input_var2)
+    # logging.info("Finished! :)")

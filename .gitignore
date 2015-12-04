@@ -1,3 +1,6 @@
 data/
+log/
+trained/
 .idea/
+__pycache__/
 *.dat
