@@ -193,9 +193,7 @@ if __name__ == "__main__":
 
     logging.info("Creating the update expression")
     params = lasagne.layers.get_all_params(network, trainable=True)
-    # updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum=0.9)
-    updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.5, momentum=0.3)
-    #updates = lasagne.updates.adagrad(loss, params) # this kinda works
+    updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum=0.9)
 
     logging.info("Creating the test-loss expression")
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
