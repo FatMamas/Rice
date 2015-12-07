@@ -85,7 +85,7 @@ def load_single_dataset(filename):
 
     part_data = np.append(np.empty(shape=0, dtype=np.uint8), file_data[b'data'])
     part_labels = np.append(np.empty(shape=0, dtype=np.uint8), file_data[b'labels'])
-    return part_data.reshape((-1, config.img_colors, config.img_size, config.img_size)).astype(np.float32)/255.0, part_labels.astype(np.int8)
+    return part_data.reshape((-1, config.img_colors, config.img_size, config.img_size)).astype(np.float32)/128.0 - 1.0, part_labels.astype(np.int8)
 
 
 def load_dataset():
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--device", nargs=1, default=["cpu"], help="Train on this device")
     parser.add_argument("-t", "--trainepochs", default=500, type=int, help="Number of train epochs")
-    parser.add_argument("-b", "--minibatch", default=100, type=int, help="Size of the minibatch")
+    parser.add_argument("-b", "--minibatch", default=128, type=int, help="Size of the minibatch")
     parser.add_argument("-m", "--mode", default="FAST_RUN", help="Theano run mode")
     parser.add_argument("-f", "--floatX", default="float32", help="Theano floatX mode")
     parser.add_argument("-l", "--log", default="log", help="Log directory")
@@ -178,9 +178,13 @@ if __name__ == "__main__":
     target_var = T.ivector('targets')
 
     logging.info("Importing the network module")    # we need to import this AFTER Theano and Lasagne
-    from model.mnist import build_network as build_network
+    # from model.mnist import build_network as build_network
     # from model.official import build_cifar_network as build_network
     # from model.conv3 import build_network_3cc as build_network
+    # from model.conv4 import build_network_4cc as build_network
+    # from model.winner import build_network_winner as build_network
+    # from model.tomas import build_network_tomas as build_network
+    from model.tomas2 import build_network_tomas2 as build_network
 
     logging.info("Building the network")
     network, net_name = build_network(config, input_var)
@@ -222,7 +226,7 @@ if __name__ == "__main__":
             train_err = 0
             train_batches = 0
             for batch_id, (inputs, targets) in enumerate(iterate_minibatches(train_data, train_labels, config.minibatch, shuffle=True)):
-                logging.info("Batch %d in epoch #%d", batch_id, epoch)
+                # logging.info("Batch %d in epoch #%d", batch_id, epoch)
                 train_err += train_fn(inputs, targets)
                 train_batches += 1
 
@@ -241,6 +245,7 @@ if __name__ == "__main__":
             logging.info("Validation accuracy:\t%.10f%%", val_acc / val_batches * 100)
 
             log_f.write("{};{};{};{}\n".format(epoch, train_err / train_batches, val_err / val_batches, val_acc / val_batches * 100))
+            log_f.flush()
 
     logging.info("Training finished")
 

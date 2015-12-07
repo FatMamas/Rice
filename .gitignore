@@ -3,4 +3,5 @@ log/
 trained/
 .idea/
 __pycache__/
+model/__pycache__/
 *.dat
