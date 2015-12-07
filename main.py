@@ -123,7 +123,7 @@ def iterate_minibatches(inputs, targets, batch_size, shuffle=False):
         else:
             excerpt = slice(start_idx, start_idx + batch_size)
         yield inputs[excerpt], targets[excerpt]
-        # yield inputs[1:5], targets[1:5] # TODO: do not use this! never!
+        # yield inputs[1:50], targets[1:50] # TODO: do not use this! never!
 
 
 def save_img(img, f_name):
@@ -213,8 +213,13 @@ if __name__ == "__main__":
     logging.info("Compiling the validation function (Theano)")
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
 
-    logging.info("Creating log file")
+    logging.info("Creating log directory")
     os.makedirs(config.log, exist_ok=True)
+
+    logging.info("Creating output directory")
+    os.makedirs(config.output, exist_ok=True)
+
+    best_acc = -1
     with open('{}/{}.csv'.format(config.log, net_name), 'w') as log_f:
         log_f.write("epoch;trainloss;valloss;valacc\n")
 
@@ -226,7 +231,7 @@ if __name__ == "__main__":
             train_err = 0
             train_batches = 0
             for batch_id, (inputs, targets) in enumerate(iterate_minibatches(train_data, train_labels, config.minibatch, shuffle=True)):
-                # logging.info("Batch %d in epoch #%d", batch_id, epoch)
+                logging.info("Batch %d in epoch #%d", batch_id, epoch)
                 train_err += train_fn(inputs, targets)
                 train_batches += 1
 
@@ -240,20 +245,22 @@ if __name__ == "__main__":
                 val_acc += acc
                 val_batches += 1
 
-            logging.info("Training loss:\t%.10f", train_err / train_batches)
-            logging.info("Validation loss:\t%.10f", val_err / val_batches)
+            logging.info("Training loss:\t\t%.10f", train_err / train_batches)
+            logging.info("Validation loss:\t\t%.10f", val_err / val_batches)
             logging.info("Validation accuracy:\t%.10f%%", val_acc / val_batches * 100)
 
             log_f.write("{};{};{};{}\n".format(epoch, train_err / train_batches, val_err / val_batches, val_acc / val_batches * 100))
             log_f.flush()
 
+            if val_acc / val_batches > best_acc:
+                best_acc = val_acc / val_batches
+                network_filename = "{}/network_{}_{}.dat".format(config.output, net_name, epoch)
+                logging.info("Saving the model into '%s'", network_filename)
+                save_network(network, network_filename)
+
     logging.info("Training finished")
 
-    os.makedirs(config.output, exist_ok=True)
-    network_filename = "{}/network_{}.dat".format(config.output, net_name)
-    logging.info("Saving the model into '%s'", network_filename)
-    save_network(network, network_filename)
-
+    # TODO: this doesn't actually work, fix it!
     # logging.info("Reading it just to be sure")
     # input_var2 = T.tensor4('inputs2')
     # network2 = load_network(network_filename, input_var2)
