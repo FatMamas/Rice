@@ -231,7 +231,7 @@ if __name__ == "__main__":
             train_err = 0
             train_batches = 0
             for batch_id, (inputs, targets) in enumerate(iterate_minibatches(train_data, train_labels, config.minibatch, shuffle=True)):
-                logging.info("Batch %d in epoch #%d", batch_id, epoch)
+                # logging.info("Batch %d in epoch #%d", batch_id, epoch)
                 train_err += train_fn(inputs, targets)
                 train_batches += 1
 
@@ -249,9 +249,11 @@ if __name__ == "__main__":
             logging.info("Validation loss:\t\t%.10f", val_err / val_batches)
             logging.info("Validation accuracy:\t%.10f%%", val_acc / val_batches * 100)
 
+            # print nasty progress info
             log_f.write("{};{};{};{}\n".format(epoch, train_err / train_batches, val_err / val_batches, val_acc / val_batches * 100))
             log_f.flush()
 
+            # save better model if it's better then the previous best one
             if val_acc / val_batches > best_acc:
                 best_acc = val_acc / val_batches
                 network_filename = "{}/network_{}_{}.dat".format(config.output, net_name, epoch)
