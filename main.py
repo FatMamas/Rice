@@ -184,7 +184,8 @@ if __name__ == "__main__":
     # from model.conv4 import build_network_4cc as build_network
     # from model.winner import build_network_winner as build_network
     # from model.tomas import build_network_tomas as build_network
-    from model.tomas2 import build_network_tomas2 as build_network
+    # from model.tomas2 import build_network_tomas2 as build_network
+    from model.tomas2_1 import build_network_tomas2_1 as build_network
 
     logging.info("Building the network")
     network, net_name = build_network(config, input_var)
