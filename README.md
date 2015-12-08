@@ -30,6 +30,12 @@ optional arguments:
                         Theano floatX mode
 ```
 
+Creating reports
+----------------
+
+run `$ Rscript stat/report.R log/<NAME>.csv`. The `<NAME>.png` file will appear in the current folder.
+
+
 Data
 ----
 It is expected to have `data/` directory with the content of the [CIFAR-10 dataset](http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz)

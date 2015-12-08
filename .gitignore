@@ -4,4 +4,7 @@ trained/
 .idea/
 __pycache__/
 model/__pycache__/
+stat/.RData
+stat/.Rhistory
 *.dat
+*.png
