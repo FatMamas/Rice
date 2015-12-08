@@ -210,6 +210,9 @@ if __name__ == "__main__":
     import theano.tensor as T
     import lasagne
 
+    logging.info("Setting the recursion max limit")
+    sys.setrecursionlimit(config.minibatch + 10)
+
     logging.info("Loading the training patterns")
     train_data, train_labels = load_dataset()
     if len(train_data) != len(train_labels):
@@ -229,14 +232,14 @@ if __name__ == "__main__":
     target_var = T.ivector('targets')
 
     logging.info("Importing the network module")    # we need to import this AFTER Theano and Lasagne
-    # from model.mnist import build_network as build_network
+    from model.mnist import build_network as build_network
     # from model.official import build_cifar_network as build_network
     # from model.conv3 import build_network_3cc as build_network
     # from model.conv4 import build_network_4cc as build_network
     # from model.winner import build_network_winner as build_network
     # from model.tomas import build_network_tomas as build_network
     # from model.tomas2 import build_network_tomas2 as build_network
-    from model.tomas2_1 import build_network_tomas2_1 as build_network
+    # from model.tomas2_1 import build_network_tomas2_1 as build_network
 
     logging.info("Building the network")
     network, net_name = build_network(config, input_var)
@@ -323,6 +326,7 @@ if __name__ == "__main__":
     network_filename = "{}/network_{}_{}.dat".format(config.output, net_name, last_save)
     logging.info("Reading it just to be sure: {}".format(network_filename))
     network_n, net_name_n, input_var_n, target_var_n, prediction_n, loss_n, params_n, updates_n, test_prediction_n, test_loss_n, predict_fn_n, test_acc_n, train_fn_n, val_fn_n = load_network(network_filename)
+
     logging.info("Printing 20 random classifications")
     test_random(predict_fn_n, test_data, test_labels, n=20)
 
