@@ -1,4 +1,4 @@
-def build_network_tomas2(config, input_var=None):
+def build_network_tomas2_1(config, input_var=None):
     # epoch 131 -> 76.28
     # epoch 171 -> 79.5654
     # epoch 179 -> 80.004
@@ -39,4 +39,4 @@ def build_network_tomas2(config, input_var=None):
     network = DenseLayer(lasagne.layers.dropout(network, p=.5), num_units=256, nonlinearity=rectify)
     network = DenseLayer(lasagne.layers.dropout(network, p=.5), num_units=10, nonlinearity=softmax)
 
-    return network, 'tomas2'
+    return network, 'tomas2_1'
