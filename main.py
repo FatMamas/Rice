@@ -2,6 +2,7 @@ import logging
 import sys
 import argparse
 import os
+import random
 
 import pickle
 import numpy as np
@@ -100,12 +101,43 @@ def load_dataset():
     return all_data.reshape((-1, config.img_colors, config.img_size, config.img_size)), all_labels.astype(np.int8)
 
 
-def save_network(net, filename):
+def save_network(filename, network_p, net_name_p, input_var_p, target_var_p, prediction_p, loss_p, params_p, updates_p,
+                 test_prediction_p, test_loss_p, predict_fn_p, test_acc_p, train_fn_p, val_fn_p):
+    data = {
+        'network': network_p,
+        'net_name': net_name_p,
+        'input_var': input_var_p,
+        'target_var': target_var_p,
+        'prediction': prediction_p,
+        'loss': loss_p,
+        'params': params_p,
+        'updates': updates_p,
+        'test_prediction': test_prediction_p,
+        'test_loss': test_loss_p,
+        'predict_fn': predict_fn_p,
+        'test_acc': test_acc_p,
+        'train_fn': train_fn_p,
+        'val_fn': val_fn_p
+    }
+    with open(filename, 'wb') as f:
+        pickle.dump(data, f)
+
+
+def load_network(filename):
+    with open(filename, 'rb') as f:
+        data = pickle.load(f)
+
+    return data['network'], data['net_name'], data['input_var'], data['target_var'], data['prediction'], data['loss'],\
+           data['params'], data['updates'], data['test_prediction'], data['test_loss'], data['predict_fn'],\
+           data['test_acc'], data['train_fn'], data['val_fn']
+
+
+def save_network_old(net, filename):
     with open(filename, 'wb') as f:
         pickle.dump(lasagne.layers.get_all_param_values(net), f)
 
 
-def load_network(filename, net):
+def load_network_old(filename, net):
     with open(filename, 'rb') as f:
         data = pickle.load(f)
     lasagne.layers.set_all_param_values(net, data)
@@ -123,7 +155,26 @@ def iterate_minibatches(inputs, targets, batch_size, shuffle=False):
         else:
             excerpt = slice(start_idx, start_idx + batch_size)
         yield inputs[excerpt], targets[excerpt]
-        # yield inputs[1:50], targets[1:50] # TODO: do not use this! never!
+        # yield inputs[1:5], targets[1:5] # TODO: do not use this! never!
+
+
+def recall(recall_fn, patterns):
+    """NN recall. Recalls a single image or an array of images. Images are supposed to be NumPy arrays."""
+
+    if patterns.ndim == 4:
+        return recall_fn(patterns)
+    elif patterns.ndim == 3:
+        return recall_fn([patterns])[0]
+    else:
+        raise ValueError('Unexpected dimension of the patterns parameter')
+
+
+def test_random(recall_fn, patterns, expectations, n=10):
+    for i in range(n):
+        idx = random.randint(1, len(patterns)-2)
+        res = recall(recall_fn, patterns[idx])
+        exp = expectations[idx]
+        logging.info('Test image #%d:\t recall: %d\t expected: %d', idx, res, exp)
 
 
 def save_img(img, f_name):
@@ -178,13 +229,13 @@ if __name__ == "__main__":
     target_var = T.ivector('targets')
 
     logging.info("Importing the network module")    # we need to import this AFTER Theano and Lasagne
-    # from model.mnist import build_network as build_network
+    from model.mnist import build_network as build_network
     # from model.official import build_cifar_network as build_network
     # from model.conv3 import build_network_3cc as build_network
     # from model.conv4 import build_network_4cc as build_network
     # from model.winner import build_network_winner as build_network
     # from model.tomas import build_network_tomas as build_network
-    from model.tomas2 import build_network_tomas2 as build_network
+    # from model.tomas2 import build_network_tomas2 as build_network
 
     logging.info("Building the network")
     network, net_name = build_network(config, input_var)
@@ -203,6 +254,9 @@ if __name__ == "__main__":
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
     test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var)
     test_loss = test_loss.mean()
+
+    logging.info("Creating the prediction expression")
+    predict_fn = theano.function([input_var], T.argmax(test_prediction, axis=1))
 
     logging.info("Creating the test accuracy expression")
     test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var), dtype=theano.config.floatX)
@@ -258,12 +312,15 @@ if __name__ == "__main__":
                 best_acc = val_acc / val_batches
                 network_filename = "{}/network_{}_{}.dat".format(config.output, net_name, epoch)
                 logging.info("Saving the model into '%s'", network_filename)
-                save_network(network, network_filename)
+                save_network(network_filename, network, net_name, input_var, target_var, prediction, loss, params,
+                             updates, test_prediction, test_loss, predict_fn, test_acc, train_fn, val_fn)
 
     logging.info("Training finished")
 
-    # TODO: this doesn't actually work, fix it!
-    # logging.info("Reading it just to be sure")
-    # input_var2 = T.tensor4('inputs2')
-    # network2 = load_network(network_filename, input_var2)
-    # logging.info("Finished! :)")
+    logging.info("Reading it just to be sure")
+    network_filename = "{}/network_{}_{}.dat".format(config.output, net_name, 0)
+    network_n, net_name_n, input_var_n, target_var_n, prediction_n, loss_n, params_n, updates_n, test_prediction_n, test_loss_n, predict_fn_n, test_acc_n, train_fn_n, val_fn_n = load_network(network_filename)
+    logging.info("Printing 20 random classifications")
+    test_random(predict_fn_n, test_data, test_labels, n=20)
+
+    logging.info("Finished! Unbelievable, right?")
