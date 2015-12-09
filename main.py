@@ -290,7 +290,8 @@ if __name__ == "__main__":
 
     write_mode = 'a' if config.restore else 'w'     # continue in previous log if the model is restored
     with open('{}/{}.csv'.format(config.log, net_name), write_mode) as log_f:
-        log_f.write("epoch;trainloss;valloss;valacc\n")
+        if not config.restore:
+            log_f.write("epoch;trainloss;valloss;valacc\n")
 
         logging.info("Starting the training loop")
         for epoch in range(config.iter, config.trainepochs):
