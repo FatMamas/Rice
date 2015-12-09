@@ -12,6 +12,7 @@ par(mfrow=c(1, 2), oma = c(0, 0, 2, 0))
 # Valacc
 plot(data$epoch, data$valacc, type='l', main='Validation accuracy', xlab='Epoch [#]', ylab='Accuracy [%]')
 abline(a=max(data$valacc), b=0, col='red')
+axis(side = 2, at = max(data$valacc))
 
 #Tloss
 plot(data$epoch, data$trainloss, type='l', main='Train/Test loss', xlab='Epoch [#]', ylab='Loss')
