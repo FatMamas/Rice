@@ -195,12 +195,15 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--floatX", default="float32", help="Theano floatX mode")
     parser.add_argument("-l", "--log", default="log", help="Log directory")
     parser.add_argument("-o", "--output", default="trained", help="Trained model output directory")
+    parser.add_argument("-r", "--restore", default=None, help="Path to the saved model to be continued from")
+    parser.add_argument("-i", "--iter", default=0, help="Number of first epoch. Use together with --restore in order to have beautiful logs")
 
     global config
     config = parser.parse_args()
     config.device = config.device[0]
     config.img_colors = 3
     config.img_size = 32
+    config.iter = int(config.iter)
 
     logging.info("Setting environmental variables for Theano")
     os.environ["THEANO_FLAGS"] = "mode={},device={},floatX={},nvcc.fastmath=True".format(config.mode, config.device, config.floatX)
@@ -227,64 +230,70 @@ if __name__ == "__main__":
         sys.exit(1)
     logging.info("Loaded %d testing patterns", len(test_labels))
 
-    logging.info("Creating Theano input and target variables")
-    input_var = T.tensor4('inputs', dtype='float32')
-    target_var = T.ivector('targets')
+    if config.restore:
+        logging.info("Restoring the model and all variables from '%s'", config.restore)
+        network, net_name, input_var, target_var, prediction, loss, params, updates, test_prediction, test_loss, predict_fn, test_acc, train_fn, val_fn = load_network(config.restore)
+    else:   # build new model
+        logging.info("Creating Theano input and target variables")
+        input_var = T.tensor4('inputs', dtype='float32')
+        target_var = T.ivector('targets')
 
-    logging.info("Importing the network module")    # we need to import this AFTER Theano and Lasagne
-    # from model.mnist import build_network as build_network
-    # from model.official import build_cifar_network as build_network
-    # from model.conv3 import build_network_3cc as build_network
-    # from model.conv4 import build_network_4cc as build_network
-    # from model.winner import build_network_winner as build_network
-    # from model.tomas import build_network_tomas as build_network
-    # from model.tomas2 import build_network_tomas2 as build_network
-    # from model.tomas2_1 import build_network_tomas2_1 as build_network
-    from model.tomas3 import build_network_tomas3 as build_network
+        logging.info("Importing the network module")    # we need to import this AFTER Theano and Lasagne
+        # from model.mnist import build_network as build_network
+        # from model.official import build_cifar_network as build_network
+        # from model.conv3 import build_network_3cc as build_network
+        # from model.conv4 import build_network_4cc as build_network
+        # from model.winner import build_network_winner as build_network
+        # from model.tomas import build_network_tomas as build_network
+        # from model.tomas2 import build_network_tomas2 as build_network
+        # from model.tomas2_1 import build_network_tomas2_1 as build_network
+        from model.tomas3 import build_network_tomas3 as build_network
 
-    logging.info("Building the network")
-    network, net_name = build_network(config, input_var)
-    logging.info("Network '%s' successfully built", net_name)
+        logging.info("Building the network")
+        network, net_name = build_network(config, input_var)
+        logging.info("Network '%s' successfully built", net_name)
 
-    logging.info("Creating the loss expression")
-    prediction = lasagne.layers.get_output(network)
-    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss = loss.mean()
+        logging.info("Creating the loss expression")
+        prediction = lasagne.layers.get_output(network)
+        loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
+        loss = loss.mean()
 
-    logging.info("Creating the update expression")
-    params = lasagne.layers.get_all_params(network, trainable=True)
-    updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum=0.9)
+        logging.info("Creating the update expression")
+        params = lasagne.layers.get_all_params(network, trainable=True)
+        updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum=0.9)
 
-    logging.info("Creating the test-loss expression")
-    test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var)
-    test_loss = test_loss.mean()
+        logging.info("Creating the test-loss expression")
+        test_prediction = lasagne.layers.get_output(network, deterministic=True)
+        test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var)
+        test_loss = test_loss.mean()
 
-    logging.info("Creating the prediction expression")
-    predict_fn = theano.function([input_var], T.argmax(test_prediction, axis=1))
+        logging.info("Creating the prediction expression")
+        predict_fn = theano.function([input_var], T.argmax(test_prediction, axis=1))
 
-    logging.info("Creating the test accuracy expression")
-    test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var), dtype=theano.config.floatX)
+        logging.info("Creating the test accuracy expression")
+        test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var), dtype=theano.config.floatX)
 
-    logging.info("Compiling the train function (Theano)")
-    train_fn = theano.function([input_var, target_var], loss, updates=updates)
+        logging.info("Compiling the train function (Theano)")
+        train_fn = theano.function([input_var, target_var], loss, updates=updates)
 
-    logging.info("Compiling the validation function (Theano)")
-    val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
+        logging.info("Compiling the validation function (Theano)")
+        val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
 
-    logging.info("Creating log directory")
-    os.makedirs(config.log, exist_ok=True)
+        logging.info("Creating log directory")
+        os.makedirs(config.log, exist_ok=True)
 
-    logging.info("Creating output directory")
-    os.makedirs(config.output, exist_ok=True)
+        logging.info("Creating output directory")
+        os.makedirs(config.output, exist_ok=True)
 
     best_acc = -1
     last_save = 0
-    with open('{}/{}.csv'.format(config.log, net_name), 'w') as log_f:
+
+    write_mode = 'a' if config.restore else 'w'     # continue in previous log if the model is restored
+    with open('{}/{}.csv'.format(config.log, net_name), write_mode) as log_f:
         log_f.write("epoch;trainloss;valloss;valacc\n")
 
         logging.info("Starting the training loop")
-        for epoch in range(config.trainepochs):
+        for epoch in range(config.iter, config.trainepochs):
             logging.info("Epoch #%d", epoch)
 
             logging.info("Passing over the training data")

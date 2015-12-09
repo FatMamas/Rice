@@ -15,7 +15,7 @@ Usage
 
 ```
 usage: main.py [-h] [-d DEVICE] [-t TRAINEPOCHS] [-b MINIBATCH] [-m MODE]
-               [-f FLOATX]
+               [-f FLOATX] [-l LOG] [-o OUTPUT] [-r RESTORE] [-i ITER]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -28,6 +28,14 @@ optional arguments:
   -m MODE, --mode MODE  Theano run mode
   -f FLOATX, --floatX FLOATX
                         Theano floatX mode
+  -l LOG, --log LOG     Log directory
+  -o OUTPUT, --output OUTPUT
+                        Trained model output directory
+  -r RESTORE, --restore RESTORE
+                        Path to the saved model to be continued from
+  -i ITER, --iter ITER  Number of first epoch. Use together with --restore in
+                        order to have beautiful logs
+
 ```
 
 Creating reports
