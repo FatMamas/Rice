@@ -211,7 +211,7 @@ if __name__ == "__main__":
     import lasagne
 
     logging.info("Setting the recursion max limit")
-    sys.setrecursionlimit(config.minibatch + 10)
+    sys.setrecursionlimit(config.minibatch + 10000)
 
     logging.info("Loading the training patterns")
     train_data, train_labels = load_dataset()
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     target_var = T.ivector('targets')
 
     logging.info("Importing the network module")    # we need to import this AFTER Theano and Lasagne
-    from model.mnist import build_network as build_network
+    # from model.mnist import build_network as build_network
     # from model.official import build_cifar_network as build_network
     # from model.conv3 import build_network_3cc as build_network
     # from model.conv4 import build_network_4cc as build_network
@@ -240,6 +240,7 @@ if __name__ == "__main__":
     # from model.tomas import build_network_tomas as build_network
     # from model.tomas2 import build_network_tomas2 as build_network
     # from model.tomas2_1 import build_network_tomas2_1 as build_network
+    from model.tomas3 import build_network_tomas3 as build_network
 
     logging.info("Building the network")
     network, net_name = build_network(config, input_var)
