@@ -211,7 +211,7 @@ if __name__ == "__main__":
     import lasagne
 
     logging.info("Setting the recursion max limit")
-    sys.setrecursionlimit(config.minibatch + 10)
+    sys.setrecursionlimit(config.minibatch + 10000)
 
     logging.info("Loading the training patterns")
     train_data, train_labels = load_dataset()
