@@ -15,8 +15,8 @@ def build_network_tomas3(config, input_var=None):
 
     network = InputLayer(shape=(None, config.img_colors, config.img_size, config.img_size), input_var=input_var)
 
-    network = ConvLayer(network, num_filters=256, stride=2, untie_biases=True, filter_size=3, nonlinearity=rectify)
-    network = ConvLayer(network, num_filters=128, stride=2, filter_size=3, nonlinearity=rectify)
+    network = ConvLayer(network, num_filters=256, untie_biases=True, filter_size=3, nonlinearity=rectify)
+    network = ConvLayer(network, num_filters=128, untie_biases=True, filter_size=3, nonlinearity=rectify)
     network = PoolLayer(network, pool_size=2, ignore_border=True)
     network = DropoutLayer(network, p=0.25)
 
