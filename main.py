@@ -248,6 +248,9 @@ if __name__ == "__main__":
         # from model.tomas2 import build_network_tomas2 as build_network
         # from model.tomas2_1 import build_network_tomas2_1 as build_network
         from model.tomas3 import build_network_tomas3 as build_network
+        # from model.trivial import build_network_trivial as build_network
+        # from model.trivial2 import build_network_trivial2 as build_network
+        # from model.conv1 import build_network_1cc as build_network
 
         logging.info("Building the network")
         network, net_name = build_network(config, input_var)
