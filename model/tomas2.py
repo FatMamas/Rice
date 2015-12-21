@@ -38,4 +38,4 @@ def build_network_tomas2(config, input_var=None):
     network = DenseLayer(lasagne.layers.dropout(network, p=.5), num_units=256, nonlinearity=rectify)
     network = DenseLayer(lasagne.layers.dropout(network, p=.5), num_units=10, nonlinearity=softmax)
 
-    return network, 'tomas2'
+    return network, 'tomas2_tmp'

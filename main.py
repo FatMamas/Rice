@@ -11,7 +11,8 @@ DATA_DIR = "data"
 DATA_FILENAME = "cifar-10-python.tar.gz"
 DATA_PATH = DATA_DIR + "/" + DATA_FILENAME
 
-BATCH_NUMBER = 6
+# BATCH_NUMBER = 6 # CIFAR10
+BATCH_NUMBER = 2 # CIFAR100
 BATCH_FILENAME = "data_batch_{}"
 BATCH_PATH = DATA_DIR + "/" + BATCH_FILENAME
 BATCH_URL = "http://www.cs.toronto.edu/~kriz/" + DATA_FILENAME
@@ -85,13 +86,13 @@ def load_single_dataset(filename):
         file_data = pickle.load(f, encoding='bytes')
 
     part_data = np.append(np.empty(shape=0, dtype=np.uint8), file_data[b'data'])
-    part_labels = np.append(np.empty(shape=0, dtype=np.uint8), file_data[b'labels'])
+    part_labels = np.append(np.empty(shape=0, dtype=np.uint8), file_data[b'fine_labels'])
     return part_data.reshape((-1, config.img_colors, config.img_size, config.img_size)).astype(np.float32)/128.0 - 1.0, part_labels.astype(np.int8)
 
 
 def load_dataset():
     all_data = np.empty(shape=(0, config.img_colors, config.img_size, config.img_size), dtype=np.float32)
-    all_labels = np.empty(shape=0, dtype=np.float32)
+    all_labels = np.empty(shape=0, dtype=np.int8)
 
     for i in range(1, BATCH_NUMBER):
         chunk_data, chunk_labels = load_single_dataset(BATCH_PATH.format(i))
@@ -146,8 +147,8 @@ def load_network_old(filename, net):
 
 def iterate_minibatches(inputs, targets, batch_size, shuffle=False):
     assert len(inputs) == len(targets)
+    indices = np.arange(len(inputs))
     if shuffle:
-        indices = np.arange(len(inputs))
         np.random.shuffle(indices)
     for start_idx in range(0, len(inputs) - batch_size + 1, batch_size):
         if shuffle:
@@ -247,10 +248,11 @@ if __name__ == "__main__":
         # from model.tomas import build_network_tomas as build_network
         # from model.tomas2 import build_network_tomas2 as build_network
         # from model.tomas2_1 import build_network_tomas2_1 as build_network
-        from model.tomas3 import build_network_tomas3 as build_network
+        # from model.tomas3 import build_network_tomas3 as build_network
         # from model.trivial import build_network_trivial as build_network
         # from model.trivial2 import build_network_trivial2 as build_network
         # from model.conv1 import build_network_1cc as build_network
+        from model.cifar100 import build_network_cifar100 as build_network
 
         logging.info("Building the network")
         network, net_name = build_network(config, input_var)
@@ -305,7 +307,9 @@ if __name__ == "__main__":
             train_batches = 0
             for batch_id, (inputs, targets) in enumerate(iterate_minibatches(train_data, train_labels, config.minibatch, shuffle=True)):
                 # logging.info("Batch %d in epoch #%d", batch_id, epoch)
-                train_err += train_fn(inputs, targets)
+                err = train_fn(inputs, targets)
+                logging.info("train err: " + str(err))
+                train_err += err
                 train_batches += 1
 
             logging.info("Passing over the validation data")
@@ -314,13 +318,18 @@ if __name__ == "__main__":
             val_batches = 0
             for inputs, targets in iterate_minibatches(test_data, test_labels, config.minibatch, shuffle=False):
                 err, acc = val_fn(inputs, targets)
+                logging.info("test err: " + str(err) + ", acc: " + str(acc))
                 val_err += err
                 val_acc += acc
                 val_batches += 1
 
+            logging.info(train_err)
+            logging.info(train_batches)
+            logging.info(val_err)
+            logging.info(val_batches)
             logging.info("Training loss:\t\t%.10f", train_err / train_batches)
             logging.info("Validation loss:\t\t%.10f", val_err / val_batches)
-            logging.info("Validation accuracy:\t%.10f%%", val_acc / val_batches * 100)
+            logging.info("Validation accuracy:\t%.20f%%", val_acc / val_batches * 100)
 
             # print nasty progress info
             log_f.write("{};{};{};{}\n".format(epoch, train_err / train_batches, val_err / val_batches, val_acc / val_batches * 100))
