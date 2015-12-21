@@ -8,4 +8,4 @@ def build_network_trivial2(config, input_var=None):
     network = DenseLayer(network, num_units=256, nonlinearity=softmax)
     network = DenseLayer(network, num_units=10, nonlinearity=softmax)
 
-    return network, 'trivial2'
+    return network, 'trivial2_tmp'
